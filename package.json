@@ -1,0 +1,15 @@
+{
+  "name": "demo_post_data",
+  "version": "1.0.0",
+  "description": "Demo post data for OBD project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "KhaPham",
+  "license": "ISC",
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "form-data": "^4.0.0"
+  }
+}
