@@ -36,7 +36,9 @@ async function logIn(userName, password) {
         },
         body: JSON.stringify(data)
     })
-        .then(response => response.json())
+        .then(response => {
+            return response.json();
+        })
         .then(data => {
             // Set accessToken 
             accessToken = data.result.accessToken;
@@ -68,7 +70,9 @@ async function uploadFile(filePath) {
         // Set body is formdata
         body: fileData
     })
-        .then(res => res.json())
+        .then(res => {
+            return res.json();
+        })
         .then(data => {
             // If upload file success
             if(data.success) {
