@@ -17,11 +17,16 @@ const folderPath = path.join(__dirname, 'files');
 // Define accessToken as a null string
 let accessToken = "";
 
-// Login function with 2 probs username and passsword
-async function logIn(userName, password) {
-    // Get login url from envaironment variable
-    const logInApi = process.env.LOGIN_API;
+let cookie = "";
 
+// Login function with 2 probs username and passsword
+async function logIn(again=false, filePath="") {
+    // Get login url from envaironment variable
+    const logInApi = process.env.API_HOST + process.env.LOGIN_API;
+
+    // Login with username and password get from environment variable
+    const userName = process.env.USER_NAME;
+    const password = process.env.PASSWORD;
     // Setup data to post api
     const data = {
         name: userName,
@@ -37,20 +42,62 @@ async function logIn(userName, password) {
         body: JSON.stringify(data)
     })
         .then(response => {
+            let cookies = response.headers.get('set-cookie');
+            // console.log(cookies);
+            // cookies = cookies.split(',')
+            // console.log(cookies[0]); 
+            cookie = cookies;
             return response.json();
         })
         .then(data => {
+            // console.log(data);
             // Set accessToken 
             accessToken = data.result.accessToken;
         })
         // If error when call api, it will be log error in terminal
         .catch(err => console.error(err))
+    if(again) {
+        console.log("Login agasin!");
+        uploadFile(filePath);
+    }
 } 
+
+async function getNewAccessToken(filePath, curentAccessToken) { 
+    const refeshTokenApi = process.env.API_HOST + process.env.GET_NEW_ACCESS_TOKEN_API;
+
+    await fetch(refeshTokenApi, {
+        method: 'GET',
+        headers: {
+            'Authorization': curentAccessToken,
+            'Cookie': cookie
+        },
+        // Credential: 'include'
+    })
+        .then(res => {
+            return res.json();
+        })
+        .then(data => {
+            if(data.success) {
+                console.log("new accessToken: ", data.result.accessToken);
+                accessToken = data.result.accessToken;
+                uploadFile(filePath)
+                return;
+            } else {
+                if(data.error == "Expired!") {
+                    // console.log(data.error);
+                    // console.log("Login again");
+                    logIn(true, filePath)
+                    return;
+                }
+            }
+        })
+        .catch(err => console.error(err))
+}
 
 // Upload file function with 1 probs is upload's file path
 async function uploadFile(filePath) {
     // Get upload file url from envaironment variable
-    const uploadApi = process.env.UPLOAD_FILE_API;
+    const uploadApi = process.env.API_HOST +process.env.UPLOAD_FILE_API;
 
     // Create read stream file
     const file = fs.createReadStream(filePath)
@@ -65,8 +112,10 @@ async function uploadFile(filePath) {
         method: 'POST',
         // Set header Authorization is accessToken
         headers: {
-            'Authorization': accessToken
+            'Authorization': accessToken,
+            'Cookie': cookie
         },
+        // Credential: 'include',
         // Set body is formdata
         body: fileData
     })
@@ -75,6 +124,7 @@ async function uploadFile(filePath) {
         })
         .then(data => {
             // If upload file success
+            // console.log(data);
             if(data.success) {
                 // Remove file
                 fs.unlink(filePath, (err) => {
@@ -84,8 +134,13 @@ async function uploadFile(filePath) {
                 })
                 // Notify upload file success
                 console.log("Upload file success!");
+                return;
             } else {
-                console.log(data.err);
+                if(data.error == "Expired!") {
+                    getNewAccessToken(filePath, accessToken);
+                    console.log("Get new access token!");
+                    return;
+                }
             }
         })
         .catch(err => console.error(err))
@@ -99,10 +154,7 @@ watcher
         // Check login
         // If not logged in
         if (!accessToken) {
-            const username = process.env.USER_NAME;
-            const password = process.env.PASSWORD;
-            // Login with username and password get from environment variable
-            await logIn(username, password);
+            await logIn();
         } 
         // Call upload file function
         await uploadFile(folderPath);
